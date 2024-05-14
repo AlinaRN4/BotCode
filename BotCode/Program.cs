@@ -21,6 +21,7 @@ namespace BotCode
         private static readonly string connectionString = "Data Source=(LocalDB)\\MSSQLLocalDB;AttachDbFilename=C:\\Users\\user\\source\\repos\\SQLforTelegramBot\\SQLforTelegramBot\\TestDB.mdf;Integrated Security=True";
         static bool isSending = false;
         static System.Threading.Timer timer;
+        private static int lastMessageId = 0;
         static void Main(string[] args)
         {
             var client = new TelegramBotClient("6339879171:AAHQMkkiLuEDfT1dCcVGXp_QHuDvFryHovw");
@@ -90,8 +91,58 @@ namespace BotCode
             },
             null, timeToGo, Timeout.InfiniteTimeSpan);
         }
-    
-    async static Task Update(ITelegramBotClient BotClient, Update update, CancellationToken token)
+
+        private static bool AreThereNewMessages(int lastMessageId)
+        {
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+                    var query = "SELECT MAX(ID) FROM NewsOfGym";
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        var result = command.ExecuteScalar();
+                        if (result != DBNull.Value)
+                        {
+                            int maxMessageId = (int)result;
+                            return maxMessageId > lastMessageId;
+                        }
+
+                        return false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
+                return false;
+            }
+        }
+        private static void UpdateLastMessageId()
+        {
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+                    var query = "SELECT MAX(ID) FROM NewsOfGym";
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        var result = command.ExecuteScalar();
+                        if (result != DBNull.Value)
+                        {
+                            lastMessageId = (int)result;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
+            }
+        }
+        async static Task Update(ITelegramBotClient BotClient, Update update, CancellationToken token)
     {
             if (update.Type == Telegram.Bot.Types.Enums.UpdateType.Message)
             {
@@ -101,10 +152,32 @@ namespace BotCode
                     RegisterUser(update.Message.From.Id.ToString());
                     List<string> users = GetUsers();
 
+                    bool isSending2 = false;
+
+                    System.Timers.Timer timer = new System.Timers.Timer(60000); // 1 минута = 60 000 миллисекунд
+
+                    timer.Elapsed += async (s, ev) => {
+                        if (!isSending2)
+                        {
+                            isSending2 = true;
+                            if (AreThereNewMessages(lastMessageId))
+                            {
+                                foreach (string user in users)
+                                {
+                                    await BotClient.SendTextMessageAsync(user, "Появилась новая новость!");
+                                }
+
+                                // Обновляем lastMessageId до текущего максимального MessageID
+                                UpdateLastMessageId();
+                            }
+                            isSending2 = false;
+
+                        }
+                    };
+
+                    timer.Start();
+                    
                     bool isSending = false;
-
-                    //System.Timers.Timer timer = new System.Timers.Timer(60000); // 1 минута = 60 000 миллисекунд
-
                     ScheduleDailyTask(9, 0, async () => {
                         if (!isSending)
                         {
