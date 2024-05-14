@@ -11,6 +11,7 @@ using SQLforTelegramBot;
 using System.Xml.Linq;
 using Telegram.Bot.Args;
 using System.Collections.Generic;
+using System.Timers;
 
 namespace BotCode
 {
@@ -18,8 +19,8 @@ namespace BotCode
     {
         
         private static readonly string connectionString = "Data Source=(LocalDB)\\MSSQLLocalDB;AttachDbFilename=C:\\Users\\user\\source\\repos\\SQLforTelegramBot\\SQLforTelegramBot\\TestDB.mdf;Integrated Security=True";
-
-        
+        static bool isSending = false;
+        static System.Threading.Timer timer;
         static void Main(string[] args)
         {
             var client = new TelegramBotClient("6339879171:AAHQMkkiLuEDfT1dCcVGXp_QHuDvFryHovw");
@@ -70,8 +71,28 @@ namespace BotCode
                 return users;
             }
         }
-        async static Task Update(ITelegramBotClient BotClient, Update update, CancellationToken token)
+
+        static void ScheduleDailyTask(int hour, int minute, Func<Task> task)
         {
+            DateTime now = DateTime.Now;
+            DateTime firstRun = new DateTime(
+                now.Year, now.Month, now.Day, hour, minute, 0, 0, DateTimeKind.Local);
+
+            if (now > firstRun)
+            {
+                firstRun = firstRun.AddDays(1);
+            }
+            TimeSpan timeToGo = firstRun - now;
+            timer = new System.Threading.Timer(x =>
+            {
+                task.Invoke().Wait();
+                ScheduleDailyTask(hour, minute, task); // перепланируем задачу на следующий день
+            },
+            null, timeToGo, Timeout.InfiniteTimeSpan);
+        }
+    
+    async static Task Update(ITelegramBotClient BotClient, Update update, CancellationToken token)
+    {
             if (update.Type == Telegram.Bot.Types.Enums.UpdateType.Message)
             {
                 var message = update.Message;
@@ -82,22 +103,40 @@ namespace BotCode
 
                     bool isSending = false;
 
-                    System.Timers.Timer timer = new System.Timers.Timer(60000); // 1 минута = 60 000 миллисекунд
+                    //System.Timers.Timer timer = new System.Timers.Timer(60000); // 1 минута = 60 000 миллисекунд
 
-                    timer.Elapsed += async (s, ev) => {
+                    ScheduleDailyTask(9, 0, async () => {
                         if (!isSending)
                         {
                             isSending = true;
-                            foreach (string user in users)
+
+                            using (SqlConnection connection = new SqlConnection(connectionString))
                             {
-                                await BotClient.SendTextMessageAsync(user, "Не останавливайся на своем пути!");
+                                connection.Open();
+                                string query = "SELECT TOP 1 message FROM MotivationalMessages ORDER BY NEWID()";
+                                SqlCommand command = new SqlCommand(query, connection);
+
+                                using (SqlDataReader reader = command.ExecuteReader())
+                                {
+                                    if (reader.HasRows)
+                                    {
+                                        while (reader.Read())
+                                        {
+                                            string messages = $"{reader["message"]}";
+                                            //await BotClient.SendTextMessageAsync(message.Chat.Id, messages);
+                                            foreach (string user in users)
+                                            {
+                                                await BotClient.SendTextMessageAsync(user, messages);
+                                            }
+                                            isSending = false;
+                                        }
+                                    }
+                                }
                             }
-                            isSending = false;
-
                         }
-                    };
+                    });
 
-                    timer.Start();
+                    //timer.Start();
                     //RegisterUser('@' + update.Message.From.Username);
                     var replyKeyboard = new ReplyKeyboardMarkup(new[]
                     {
@@ -223,7 +262,6 @@ namespace BotCode
                         }
                 }
             }
-
         }
         private static async Task Error(ITelegramBotClient client, Exception exception, CancellationToken token)
         {
