@@ -62,11 +62,14 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ChekUsers.cs" />
     <Compile Include="GetNews.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="AddingID.cs" />
+    <Compile Include="SendSchedule.cs" />
     <Compile Include="TrainerSchedule.cs" />
+    <Compile Include="TrainingAppointmentManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
