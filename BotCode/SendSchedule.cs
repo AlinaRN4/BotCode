@@ -110,12 +110,12 @@ namespace BotCode
                 }
                 else
                 {
-                    await botClient.SendTextMessageAsync(message.Chat.Id, "Неверный формат ID абонемента. Пожалуйста, используйте формат /CheckMySchedule Имя Фамилия ID.");
+                    await botClient.SendTextMessageAsync(message.Chat.Id, "Неверный формат ID абонемента. Пожалуйста, используйте формат CheckMySchedule Имя Фамилия ID.");
                 }
             }
             else
             {
-                await botClient.SendTextMessageAsync(message.Chat.Id, "Неверный формат. Пожалуйста, используйте команду /CheckMySchedule и введите ваше имя, фамилию и ID через пробел.");
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Неверный формат. Пожалуйста, используйте команду CheckMySchedule и введите ваше имя, фамилию и ID через пробел.");
             }
         }
     }

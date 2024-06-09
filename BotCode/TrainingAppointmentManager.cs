@@ -43,10 +43,10 @@ namespace BotCode
                     await SendTrainersList(botClient, callbackQuery.Message);
                     break;
                 case "make_appointment":
-                    await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Для записи на тренировку введите данные в формате: '/MakeAppointment ИмяТренера ФамилияТренера ВашеИмя ВашаФамилия ВашНомерАбонемента dd-MM-yyyy HH:mm'");
+                    await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Для записи на тренировку введите данные в формате: 'MakeAppointment ИмяТренера ФамилияТренера ВашеИмя ВашаФамилия ВашНомерАбонемента dd-MM-yyyy HH:mm'");
                     break;
                 case "check_availability":
-                    await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Для просмотра свободных мест тренера используйте формат: '/AvailableDates ИмяТренера ФамилияТренера dd-MM-yyyy' и мы выведем информацию на ближайшие 7 дней от поставленной вами даты.");
+                    await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Для просмотра свободных мест тренера используйте формат: 'AvailableDates ИмяТренера ФамилияТренера dd-MM-yyyy' и мы выведем информацию на ближайшие 7 дней от поставленной вами даты.");
                     break;
                 default:
                     if (callbackQuery.Data.StartsWith("trainer_schedule"))
@@ -63,7 +63,7 @@ namespace BotCode
             // Разделение строки
             string[] parts = message.Text.Split(' ');
 
-            if (parts.Length >= 4 && parts[0] == "/AvailableDates")
+            if (parts.Length >= 4 && parts[0] == "AvailableDates")
             {
                 string trainerId = parts[1] + ' ' + parts[2];
                 string[] nameParts = parts.Skip(1).Take(2).ToArray();
@@ -109,12 +109,12 @@ namespace BotCode
                 }
                 else
                 {
-                    await BotClient.SendTextMessageAsync(message.Chat.Id, "Неверный формат имени тренера. Пожалуйста, используйте формат: '/AvailableDates ИмяТренера ФамилияТренера dd-MM-yyyy'");
+                    await BotClient.SendTextMessageAsync(message.Chat.Id, "Неверный формат имени тренера. Пожалуйста, используйте формат: 'AvailableDates ИмяТренера ФамилияТренера dd-MM-yyyy'");
                 }
             }
             else
             {
-                await BotClient.SendTextMessageAsync(message.Chat.Id, "Неверный формат ввода. Пожалуйста, используйте формат: '/AvailableDates ИмяТренера ФамилияТренера dd-MM-yyyy'");
+                await BotClient.SendTextMessageAsync(message.Chat.Id, "Неверный формат ввода. Пожалуйста, используйте формат: 'AvailableDates ИмяТренера ФамилияТренера dd-MM-yyyy'");
             }
         }
 
@@ -156,7 +156,7 @@ namespace BotCode
         {
             string[] parts = message.Text.Split(' ');
 
-            if (parts.Length == 8 && parts[0] == "/MakeAppointment" &&
+            if (parts.Length == 8 && parts[0] == "MakeAppointment" &&
                 DateTime.TryParseExact($"{parts[6]} {parts[7]}", "dd-MM-yyyy HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime appointmentDate))
             {
                 string trainerFullName = $"{parts[1]} {parts[2]}";
@@ -210,7 +210,7 @@ namespace BotCode
             }
             else
             {
-                await BotClient.SendTextMessageAsync(message.Chat.Id, "Неверный формат ввода. Используйте '/MakeAppointment TrainerName TrainerSurname UserName UserSurname NumberOfCard dd-MM-yyyy HH:mm'.");
+                await BotClient.SendTextMessageAsync(message.Chat.Id, "Неверный формат ввода. Используйте 'MakeAppointment TrainerName TrainerSurname UserName UserSurname NumberOfCard dd-MM-yyyy HH:mm'.");
             }
         }
         public static string CheckPersonalTrainerName(string trainerFullName)

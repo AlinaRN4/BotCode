@@ -29,83 +29,37 @@ namespace BotCode
         static System.Threading.Timer timer;
         private static int lastMessageId = 0;
 
+        private static readonly ITelegramBotClient BotClient = new TelegramBotClient("6339879171:AAHQMkkiLuEDfT1dCcVGXp_QHuDvFryHovw");
+        private ReplyKeyboardMarkup CreateMainMenuKeyboard()
+        {
+            return new ReplyKeyboardMarkup(new[]
+            {
+            new[] { new KeyboardButton("📅 Расписание") },
+            new[] { new KeyboardButton("👨‍🏫 Тренера") },
+            new[] { new KeyboardButton("💰 Тарифы") },
+            new[] { new KeyboardButton("🏋️‍♂️ О зале") },
+            new[] { new KeyboardButton("📰 Новости") },
+            new[] { new KeyboardButton("👤 О себе") },
+            new[] { new KeyboardButton("✏️ Записаться на тренировку") },
+            new[] { new KeyboardButton("🏅 Я тренер") }
+        });
+        }
+        public async void SendWelcomeMessage(Message message)
+        {
+
+            var replyKeyboard = CreateMainMenuKeyboard();
+
+            await BotClient.SendTextMessageAsync(message.Chat.Id, "Привет!\U0001F44B\n\nС помощью этого бота, ты можешь:\n\n" +
+                "\U0001F5D3Посмотреть расписание групповых тренировок.\n\n \U0001F3CB\u200DИзучить портфолио тренеров.\n\n" +
+                " \U0001F4B8Узнать про актуальные тарифы на абонемент.\n\n \u2139Посмотреть контакты и подробную информацию о зале.\n\n" +
+                " \u2757Прочитать новости и объявления, связанные с клубом.", replyMarkup: replyKeyboard);
+        }
         static void Main(string[] args)
         {
             var client = new TelegramBotClient("6339879171:AAHQMkkiLuEDfT1dCcVGXp_QHuDvFryHovw");
             client.StartReceiving(Update, Error);
             Console.ReadLine();
         }
-
-        static void ScheduleDailyTask(int hour, int minute, Func<Task> task)
-        {
-            DateTime now = DateTime.Now;
-            DateTime firstRun = new DateTime(
-                now.Year, now.Month, now.Day, hour, minute, 0, 0, DateTimeKind.Local);
-
-            if (now > firstRun)
-            {
-                firstRun = firstRun.AddDays(1);
-            }
-            TimeSpan timeToGo = firstRun - now;
-            timer = new System.Threading.Timer(x =>
-            {
-                task.Invoke().Wait();
-                ScheduleDailyTask(hour, minute, task); // перепланируем задачу на следующий день
-            },
-            null, timeToGo, Timeout.InfiniteTimeSpan);
-        }
-
-        private static bool AreThereNewMessages(int lastMessageId)
-        {
-            try
-            {
-                using (SqlConnection connection = new SqlConnection(connectionString))
-                {
-                    connection.Open();
-                    var query = "SELECT MAX(ID) FROM NewsOfGym";
-                    using (SqlCommand command = new SqlCommand(query, connection))
-                    {
-                        var result = command.ExecuteScalar();
-                        if (result != DBNull.Value)
-                        {
-                            int maxMessageId = (int)result;
-                            return maxMessageId > lastMessageId;
-                        }
-
-                        return false;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"An error occurred: {ex.Message}");
-                return false;
-            }
-        }
-        private static void UpdateLastMessageId()
-        {
-            try
-            {
-                using (SqlConnection connection = new SqlConnection(connectionString))
-                {
-                    connection.Open();
-                    var query = "SELECT MAX(ID) FROM NewsOfGym";
-                    using (SqlCommand command = new SqlCommand(query, connection))
-                    {
-                        var result = command.ExecuteScalar();
-                        if (result != DBNull.Value)
-                        {
-                            lastMessageId = (int)result;
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"An error occurred: {ex.Message}");
-            }
-        }
-
         
         async static Task Update(ITelegramBotClient BotClient, Update update, CancellationToken token)
         {
@@ -136,7 +90,7 @@ namespace BotCode
                         if (!isSending2)
                         {
                             isSending2 = true;
-                            if (AreThereNewMessages(lastMessageId))
+                            if (Messages.AreThereNewMessages(lastMessageId))
                             {
                                 foreach (string user in users)
                                 {
@@ -144,7 +98,7 @@ namespace BotCode
                                 }
 
                                 // Обновляем lastMessageId до текущего максимального MessageID
-                                UpdateLastMessageId();
+                                Messages.UpdateLastMessageId();
                             }
                             isSending2 = false;
 
@@ -154,7 +108,7 @@ namespace BotCode
                     timer.Start();
 
                     bool isSending = false;
-                    ScheduleDailyTask(9, 0, async () =>
+                    Messages.ScheduleDailyTask(9, 0, async () =>
                     {
                         if (!isSending)
                         {
@@ -201,7 +155,7 @@ namespace BotCode
                     await BotClient.SendTextMessageAsync(message.Chat.Id, "Привет!\U0001F44B\n\nС помощью этого бота, ты можешь:\n\n" +
                         "\U0001F5D3Посмотреть расписание групповых тренировок.\n\n \U0001F3CB\u200DИзучить портфолио тренеров.\n\n" +
                         " \U0001F4B8Узнать про актуальные тарифы на абонемент.\n\n \u2139Посмотреть контакты и подробную информацию о зале.\n\n" +
-                        " \u2757Прочитать новости и объявления, связанные с клубом.", replyMarkup: replyKeyboard);
+                        " \u2757Прочитать новости и объявления, связанные с клубом.\n\n 👀Посмотреть информацию о себе.\n\n ✍️Записаться на тренировку.", replyMarkup: replyKeyboard);
                     return;
                 }
                 switch (message.Text != null ? message.Text.ToLower() : "")
@@ -274,8 +228,8 @@ namespace BotCode
                         await TrainingAppointmentManager.HandleBookTraining(BotClient, message);
                         break;
                     case "🏅 я тренер":
-                        BotClient.SendTextMessageAsync(message.Chat.Id, "Введите ваше имя, фамилию и ID через пробел после команды /CheckMySchedule" +
-                           " (например, /CheckMySchedule Иван Иванов 123456):");
+                        BotClient.SendTextMessageAsync(message.Chat.Id, "Введите ваше имя, фамилию и ID через пробел после команды CheckMySchedule" +
+                           " (например, CheckMySchedule Иван Иванов 123456):");
                         break;
                     default:
                         {
@@ -310,11 +264,11 @@ namespace BotCode
                                     }
                                 }
                             }
-                            else if (message.Text.StartsWith("/AvailableDates"))
+                            else if (message.Text.StartsWith("AvailableDates"))
                                 await TrainingAppointmentManager.InputAvailableDates(BotClient, message);
-                            else if (message.Text.StartsWith("/MakeAppointment"))
+                            else if (message.Text.StartsWith("MakeAppointment"))
                                 await TrainingAppointmentManager.CreateAppointment(BotClient, message);
-                            else if (message.Text.Contains("/CheckMySchedule"))
+                            else if (message.Text.Contains("CheckMySchedule"))
                                 await SendSchedule.ProcessTrainerCredentials(BotClient, message);
                             else
                             {
